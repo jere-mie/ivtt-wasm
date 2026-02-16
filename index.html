@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IVTT Web Tool</title>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+    <main>
+        <section>
+            <h1>IVTT Web Tool (WASM)</h1>
+            <p class="small">Run René Zandbergen's IVTT CLI in your browser using WebAssembly.</p>
+            <p class="small">IVTT (Intermediate Voynich Transliteration Tool) is a command-line processor for IVTFF transliteration text. It is used to filter, normalize, and transform Voynich transliterations using option flags, then write transformed output for analysis workflows.</p>
+            <ul>
+                <li><a href="https://www.voynich.nu/transcr.html" target="_blank" rel="noreferrer">Transliteration source (voynich.nu)</a></li>
+                <li><a href="https://www.voynich.nu/extra/sp_transcr.html#ivtt" target="_blank" rel="noreferrer">IVTT overview</a></li>
+                <li><a href="https://www.voynich.nu/software/ivtt/IVTT_manual.pdf" target="_blank" rel="noreferrer">IVTT manual (PDF)</a></li>
+                <li><a href="https://www.voynich.nu/software/ivtt/IVTFF_format.pdf" target="_blank" rel="noreferrer">IVTFF format (PDF)</a></li>
+            </ul>
+        </section>
+
+        <section>
+            <div class="row">
+                <div>
+                    <label for="preset">Choose transliteration from workspace</label>
+                    <select id="preset"></select>
+                </div>
+                <div>
+                    <label for="upload">Or upload a local IVTFF file</label>
+                    <input id="upload" type="file" accept=".txt,.ivtff,text/plain" />
+                </div>
+            </div>
+            <p class="small">Expected IVTFF 2.0 header example: <code>#=IVTFF ... 2.0 ...</code>.</p>
+        </section>
+
+        <section>
+            <label for="args">IVTT command options (space-separated, no input/output paths)</label>
+            <input id="args" type="text" value="-x7" />
+            <div class="actions" style="margin-top: 0.8rem;">
+                <button id="runBtn" type="button">Run IVTT</button>
+                <button id="downloadBtn" type="button" disabled>Download output</button>
+                <button id="copyBtn" type="button" disabled>Copy output</button>
+            </div>
+            <p id="status" class="small" style="margin-top: 0.65rem;">Idle.</p>
+        </section>
+
+        <section>
+            <label for="inputText">Input IVTFF text</label>
+            <textarea id="inputText" spellcheck="false"></textarea>
+        </section>
+
+        <section>
+            <label for="outputText">Output text</label>
+            <textarea id="outputText" spellcheck="false" readonly></textarea>
+        </section>
+
+        <section>
+            <label>stderr / runtime log</label>
+            <pre id="stderrLog"></pre>
+        </section>
+
+        <section>
+            <h2>Acknowledgements</h2>
+            <ul>
+                <li><strong>IVTT / IVTFF copyright:</strong> IVTT and IVTFF were created by and are owned by René Zandbergen.</li>
+                <li><strong>IVTT source code:</strong> This repository does not include René’s original <code>ivtt.c</code>; it is available at <a href="https://www.voynich.nu/software/ivtt/ivtt.c" target="_blank" rel="noreferrer">https://www.voynich.nu/software/ivtt/ivtt.c</a>.</li>
+                <li><strong>Transliteration file source:</strong> Corpus files were procured from <a href="https://www.voynich.nu/transcr.html" target="_blank" rel="noreferrer">https://www.voynich.nu/transcr.html</a>.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Prebuilt WASM + Build On Top</h2>
+            <p class="small">You can directly use the prebuilt artifacts from this project, or compile your own from source.</p>
+            <ul>
+                <li>Prebuilt module (local): <a href="./dist/ivtt.mjs">./dist/ivtt.mjs</a></li>
+                <li>Prebuilt binary (local): <a href="./dist/ivtt.wasm">./dist/ivtt.wasm</a></li>
+                <li>Repository: <a href="https://github.com/jere-mie/ivtt-wasm" target="_blank" rel="noreferrer">https://github.com/jere-mie/ivtt-wasm</a></li>
+            </ul>
+            <p class="small">Feel free to build your own interfaces, pipelines, or research tools on top of these WASM artifacts.</p>
+        </section>
+
+                <section>
+            <h2>IVTT Option Cheat Sheet</h2>
+            <p class="small">Enter these options in the command options box (for example: <code>-x7</code> or <code>-f1 -c3 -u1</code>). Do not include input/output file paths in this UI.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Option</th>
+                        <th>What it does</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>-x0..-x8</code></td><td>Applies preset bundles of common transformations; <code>-x7</code> is a strong cleanup preset.</td></tr>
+                    <tr><td><code>-f0/-f1</code></td><td>Keep or remove foliation/header metadata.</td></tr>
+                    <tr><td><code>-c0..-c3</code></td><td>Control comment handling (keep, remove textual, remove variable comments, remove more/all).</td></tr>
+                    <tr><td><code>-u0..-u5</code></td><td>Control uncertain reading handling (e.g. keep, choose first reading, replace with <code>?</code>, remove words/lines).</td></tr>
+                    <tr><td><code>-l0..-l3</code></td><td>Ligature handling (keep brackets, strip brackets, capitalization modes).</td></tr>
+                    <tr><td><code>-s0..-s3</code></td><td>Hard-space behavior for dot separators (<code>.</code>): keep, blank, strip, or newline.</td></tr>
+                    <tr><td><code>-h0..-h3</code></td><td>Uncertain-space behavior for comma separators (<code>,</code>): keep, dot-like, strip, or convert to <code>?</code>.</td></tr>
+                    <tr><td><code>-w0..-w9</code></td><td>Wrapping mode: keep wrapping, unwrap continuation lines, or wrap at configured widths.</td></tr>
+                    <tr><td><code>-b0/-b1</code></td><td>Keep or strip whitespace.</td></tr>
+                    <tr><td><code>-tX</code> / <code>+tX</code></td><td>Select transcriber <code>X</code>; form determines whether transcriber ID is removed/kept in output.</td></tr>
+                    <tr><td><code>+@P</code> / <code>-@P</code></td><td>Include or exclude locus types (advanced filtering).</td></tr>
+                    <tr><td><code>+Av</code> / <code>-Av</code></td><td>Include or exclude by page variable/tag values (<code>A..Z</code>).</td></tr>
+                </tbody>
+            </table>
+            <p class="small">For full definitions, edge cases, and all option semantics, check the official IVTT manual linked above.</p>
+        </section>
+
+        <section>
+            <h2>Created By</h2>
+            <div class="created-by small">
+                <span><strong>Created by Jeremie Bornais</strong></span>
+                <span>GitHub: <a href="https://github.com/jere-mie/ivtt-wasm" target="_blank" rel="noreferrer">https://github.com/jere-mie/ivtt-wasm</a></span>
+                <span>Contact: <a href="mailto:jeremiedevelops@gmail.com">jeremiedevelops@gmail.com</a></span>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="./static/app.mjs"></script>
+</body>
+</html>
