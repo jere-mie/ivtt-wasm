@@ -3,136 +3,507 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IVTT Web Tool</title>
-    <meta name="description" content="Run René Zandbergen's IVTT (Intermediate Voynich Transliteration Tool) in your browser using WebAssembly. Process, filter, and normalize Voynich manuscript transliterations online." />
+    <title>IVTT Web - Voynich Transliteration Processor</title>
+
+    <link rel="icon" href="static/favicon.png" type="image/png">
+    <meta name="description" content="Run Rene Zandbergen's IVTT (Intermediate Voynich Transliteration Tool) in your browser using WebAssembly. Process, filter, and normalize Voynich manuscript transliterations online." />
     <meta name="author" content="Jeremie Bornais" />
     <meta name="keywords" content="IVTT, Voynich, transliteration, IVTFF, manuscript, text processing, WebAssembly, WASM" />
 
-    <!-- Open Graph tags for social sharing -->
-    <meta property="og:title" content="IVTT Web Tool (WASM)" />
-    <meta property="og:description" content="Process and filter Voynich manuscript transliterations in your browser. Run IVTT online with preset options and download results." />
+    <meta property="og:title" content="IVTT Web - Voynich Transliteration Processor" />
+    <meta property="og:description" content="Process and filter Voynich manuscript transliterations in your browser via WebAssembly." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://jere-mie.github.io/ivtt-wasm/" />
+    <meta property="og:url" content="https://ivtt.voynich.fyi" />
     <meta property="og:site_name" content="IVTT Web Tool" />
-
-    <!-- Twitter Card tags -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="IVTT Web Tool (WASM)" />
-    <meta name="twitter:description" content="Process Voynich transliterations online. Run IVTT command-line tool in your browser." />
+    <meta name="twitter:title" content="IVTT Web - Voynich Transliteration Processor" />
+    <meta name="twitter:description" content="Process Voynich transliterations online via WASM." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Nunito:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
+    <div class="grain-overlay" aria-hidden="true"></div>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">IVTT<span class="hero-title-accent"> Web</span></h1>
+            <p class="hero-tagline">Voynich Manuscript Transliteration Processor</p>
+            <p class="hero-description">
+                Transform and filter IVTFF transliterations using Rene Zandbergen's IVTT engine,
+                compiled to WebAssembly. All processing runs locally in your browser.
+            </p>
+            <nav class="hero-links">
+                <a href="https://www.voynich.nu/transcr.html" target="_blank" rel="noreferrer">Transliteration Source</a>
+                <a href="https://www.voynich.nu/extra/sp_transcr.html#ivtt" target="_blank" rel="noreferrer">IVTT Overview</a>
+                <a href="https://www.voynich.nu/software/ivtt/IVTT_manual.pdf" target="_blank" rel="noreferrer">IVTT Manual</a>
+                <a href="https://www.voynich.nu/software/ivtt/IVTFF_format.pdf" target="_blank" rel="noreferrer">IVTFF Format</a>
+            </nav>
+        </div>
+    </header>
+
     <main>
-        <section>
-            <h1>IVTT Web Tool (WASM)</h1>
-            <p class="small">Run René Zandbergen's IVTT CLI in your browser using WebAssembly.</p>
-            <p class="small">IVTT (Intermediate Voynich Transliteration Tool) is a command-line processor for IVTFF transliteration text. It is used to filter, normalize, and transform Voynich transliterations using option flags, then write transformed output for analysis workflows.</p>
-            <ul>
-                <li><a href="https://www.voynich.nu/transcr.html" target="_blank" rel="noreferrer">Transliteration source (voynich.nu)</a></li>
-                <li><a href="https://www.voynich.nu/extra/sp_transcr.html#ivtt" target="_blank" rel="noreferrer">IVTT overview</a></li>
-                <li><a href="https://www.voynich.nu/software/ivtt/IVTT_manual.pdf" target="_blank" rel="noreferrer">IVTT manual (PDF)</a></li>
-                <li><a href="https://www.voynich.nu/software/ivtt/IVTFF_format.pdf" target="_blank" rel="noreferrer">IVTFF format (PDF)</a></li>
-            </ul>
-        </section>
-
-        <section>
-            <div class="row">
-                <div>
-                    <label for="preset">Choose transliteration from workspace</label>
-                    <select id="preset"></select>
+        <!-- Step 1: Input Source -->
+        <section class="panel" id="source-panel">
+            <div class="panel-header">
+                <span class="step-badge">1</span>
+                <h2>Choose Input</h2>
+            </div>
+            <div class="source-grid">
+                <div class="source-option">
+                    <label for="preset-select">Corpus file</label>
+                    <select id="preset-select"></select>
+                    <p class="hint">Pre-loaded transliterations from voynich.nu</p>
                 </div>
-                <div>
-                    <label for="upload">Or upload a local IVTFF file</label>
-                    <input id="upload" type="file" accept=".txt,.ivtff,text/plain" />
+                <div class="source-divider"><span>or</span></div>
+                <div class="source-option">
+                    <label>Upload IVTFF file</label>
+                    <input id="upload-input" type="file" accept=".txt,.ivtff,text/plain" hidden />
+                    <button type="button" id="btn-upload" class="btn-upload">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Choose file...
+                    </button>
+                    <p class="hint">
+                        <span id="upload-name" hidden></span>
+                        <span id="upload-hint-default">Expected header: <code>#=IVTFF ... 2.0 ...</code></span>
+                    </p>
                 </div>
             </div>
-            <p class="small">Expected IVTFF 2.0 header example: <code>#=IVTFF ... 2.0 ...</code>.</p>
         </section>
 
-        <section>
-            <label for="args">IVTT command options (space-separated, no input/output paths)</label>
-            <input id="args" type="text" value="-x7" />
-            <div class="actions" style="margin-top: 0.8rem;">
-                <button id="runBtn" type="button">Run IVTT</button>
-                <button id="downloadBtn" type="button" disabled>Download output</button>
-                <button id="copyBtn" type="button" disabled>Copy output</button>
+        <!-- Step 2: Configure Options -->
+        <section class="panel" id="options-panel">
+            <div class="panel-header">
+                <span class="step-badge">2</span>
+                <h2>Configure Processing</h2>
             </div>
-            <p id="status" class="small" style="margin-top: 0.65rem;">Idle.</p>
-        </section>
 
-        <section>
-            <label for="inputText">Input IVTFF text</label>
-            <textarea id="inputText" spellcheck="false"></textarea>
-        </section>
-
-        <section>
-            <label for="outputText">Output text</label>
-            <textarea id="outputText" spellcheck="false" readonly></textarea>
-        </section>
-
-        <section>
-            <label>stderr / runtime log</label>
-            <pre id="stderrLog"></pre>
-        </section>
-
-        <section>
-            <h2>Acknowledgements</h2>
-            <ul>
-                <li><strong>IVTT / IVTFF copyright:</strong> IVTT and IVTFF were created by and are owned by René Zandbergen.</li>
-                <li><strong>IVTT source code:</strong> This repository does not include René’s original <code>ivtt.c</code>; it is available at <a href="https://www.voynich.nu/software/ivtt/ivtt.c" target="_blank" rel="noreferrer">https://www.voynich.nu/software/ivtt/ivtt.c</a>.</li>
-                <li><strong>Transliteration file source:</strong> Corpus files were procured from <a href="https://www.voynich.nu/transcr.html" target="_blank" rel="noreferrer">https://www.voynich.nu/transcr.html</a>.</li>
-            </ul>
-        </section>
-
-        <section>
-            <h2>Prebuilt WASM + Build On Top</h2>
-            <p class="small">You can directly use the prebuilt artifacts from this project, or compile your own from source.</p>
-            <ul>
-                <li>Prebuilt module (local): <a href="./dist/ivtt.mjs">./dist/ivtt.mjs</a></li>
-                <li>Prebuilt binary (local): <a href="./dist/ivtt.wasm">./dist/ivtt.wasm</a></li>
-                <li>Repository: <a href="https://github.com/jere-mie/ivtt-wasm" target="_blank" rel="noreferrer">https://github.com/jere-mie/ivtt-wasm</a></li>
-            </ul>
-            <p class="small">Feel free to build your own interfaces, pipelines, or research tools on top of these WASM artifacts.</p>
-        </section>
-
-                <section>
-            <h2>IVTT Option Cheat Sheet</h2>
-            <p class="small">Enter these options in the command options box (for example: <code>-x7</code> or <code>-f1 -c3 -u1</code>). Do not include input/output file paths in this UI.</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Option</th>
-                        <th>What it does</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td><code>-x0..-x8</code></td><td>Applies preset bundles of common transformations; <code>-x7</code> is a strong cleanup preset.</td></tr>
-                    <tr><td><code>-f0/-f1</code></td><td>Keep or remove foliation/header metadata.</td></tr>
-                    <tr><td><code>-c0..-c3</code></td><td>Control comment handling (keep, remove textual, remove variable comments, remove more/all).</td></tr>
-                    <tr><td><code>-u0..-u5</code></td><td>Control uncertain reading handling (e.g. keep, choose first reading, replace with <code>?</code>, remove words/lines).</td></tr>
-                    <tr><td><code>-l0..-l3</code></td><td>Ligature handling (keep brackets, strip brackets, capitalization modes).</td></tr>
-                    <tr><td><code>-s0..-s3</code></td><td>Hard-space behavior for dot separators (<code>.</code>): keep, blank, strip, or newline.</td></tr>
-                    <tr><td><code>-h0..-h3</code></td><td>Uncertain-space behavior for comma separators (<code>,</code>): keep, dot-like, strip, or convert to <code>?</code>.</td></tr>
-                    <tr><td><code>-w0..-w9</code></td><td>Wrapping mode: keep wrapping, unwrap continuation lines, or wrap at configured widths.</td></tr>
-                    <tr><td><code>-b0/-b1</code></td><td>Keep or strip whitespace.</td></tr>
-                    <tr><td><code>-tX</code> / <code>+tX</code></td><td>Select transcriber <code>X</code>; form determines whether transcriber ID is removed/kept in output.</td></tr>
-                    <tr><td><code>+@P</code> / <code>-@P</code></td><td>Include or exclude locus types (advanced filtering).</td></tr>
-                    <tr><td><code>+Av</code> / <code>-Av</code></td><td>Include or exclude by page variable/tag values (<code>A..Z</code>).</td></tr>
-                </tbody>
-            </table>
-            <p class="small">For full definitions, edge cases, and all option semantics, check the official IVTT manual linked above.</p>
-        </section>
-
-        <section>
-            <h2>Created By</h2>
-            <div class="created-by small">
-                <span><strong>Created by Jeremie Bornais</strong></span>
-                <span>GitHub: <a href="https://github.com/jere-mie/ivtt-wasm" target="_blank" rel="noreferrer">https://github.com/jere-mie/ivtt-wasm</a></span>
-                <span>Contact: <a href="mailto:jeremiedevelops@gmail.com">jeremiedevelops@gmail.com</a></span>
+            <!-- Quick Presets -->
+            <div class="presets-section">
+                <h3 class="subsection-title">Quick Presets</h3>
+                <div class="presets-grid">
+                    <button class="preset-card" data-preset="0">
+                        <span class="preset-flag">-x0</span>
+                        <span class="preset-name">One Line / Locus</span>
+                        <span class="preset-desc">Unwrap lines, strip comments &amp; whitespace</span>
+                    </button>
+                    <button class="preset-card" data-preset="1">
+                        <span class="preset-flag">-x1</span>
+                        <span class="preset-name">Raw Voynich Text</span>
+                        <span class="preset-desc">Strip all metadata, keep only transliterated text</span>
+                    </button>
+                    <button class="preset-card" data-preset="2">
+                        <span class="preset-flag">-x2</span>
+                        <span class="preset-name">Clean Text</span>
+                        <span class="preset-desc">Text only, resolve uncertain readings to first option</span>
+                    </button>
+                    <button class="preset-card" data-preset="3">
+                        <span class="preset-flag">-x3</span>
+                        <span class="preset-name">Normalize Spaces</span>
+                        <span class="preset-desc">All certain &amp; uncertain word spaces become blanks</span>
+                    </button>
+                    <button class="preset-card" data-preset="4">
+                        <span class="preset-flag">-x4</span>
+                        <span class="preset-name">Selective Spaces</span>
+                        <span class="preset-desc">Certain spaces to blanks, remove uncertain ones</span>
+                    </button>
+                    <button class="preset-card" data-preset="5">
+                        <span class="preset-flag">-x5</span>
+                        <span class="preset-name">Statistics Prep</span>
+                        <span class="preset-desc">Strip ligature brackets, convert high-ASCII codes</span>
+                    </button>
+                    <button class="preset-card" data-preset="6">
+                        <span class="preset-flag">-x6</span>
+                        <span class="preset-name">Font Display</span>
+                        <span class="preset-desc">Prepare special characters for TTF rendering</span>
+                    </button>
+                    <button class="preset-card" data-preset="7">
+                        <span class="preset-flag">-x7</span>
+                        <span class="preset-name">ASCII Full</span>
+                        <span class="preset-desc">Clean ASCII text, preserve uncertain spaces</span>
+                    </button>
+                    <button class="preset-card" data-preset="8">
+                        <span class="preset-flag">-x8</span>
+                        <span class="preset-name">ASCII Clean</span>
+                        <span class="preset-desc">Clean ASCII text, remove uncertain spaces</span>
+                    </button>
+                </div>
             </div>
+
+            <!-- Detailed Options Tabs -->
+            <div class="detailed-section">
+                <h3 class="subsection-title">Detailed Options <span class="hint">Override or supplement presets</span></h3>
+
+                <div class="tabs" role="tablist">
+                    <button class="tab active" data-tab="annotations" aria-selected="true">Annotations</button>
+                    <button class="tab" data-tab="characters" aria-selected="false">Characters</button>
+                    <button class="tab" data-tab="spacing" aria-selected="false">Spacing &amp; Layout</button>
+                    <button class="tab" data-tab="selection" aria-selected="false">Page Selection</button>
+                    <button class="tab" data-tab="locus" aria-selected="false">Locus &amp; Transcriber</button>
+                </div>
+
+                <!-- Tab: Annotations -->
+                <div class="tab-panel active" data-tab-panel="annotations" role="tabpanel">
+                    <div class="option-grid">
+                        <div class="option-group">
+                            <label for="opt-c">Comments <code>-c</code></label>
+                            <select id="opt-c" data-opt="c">
+                                <option value="">Default (keep all)</option>
+                                <option value="1">Remove textual comments</option>
+                                <option value="2">Remove variable/tag comments</option>
+                                <option value="3">Remove all comments</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-f">Foliation <code>-f</code></label>
+                            <select id="opt-f" data-opt="f">
+                                <option value="">Default (keep)</option>
+                                <option value="1">Remove all foliation &amp; header</option>
+                                <option value="9">Ignore locus layouts (legacy files)</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-p">Paragraph &amp; Drawing Codes <code>-p</code></label>
+                            <select id="opt-p" data-opt="p">
+                                <option value="">Default (keep)</option>
+                                <option value="1">Drawing intrusions to space</option>
+                                <option value="2">Drawing to space, remove para codes</option>
+                                <option value="3">Remove all intrusion &amp; para codes</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-q">Paragraph Filtering <code>-q</code></label>
+                            <select id="opt-q" data-opt="q">
+                                <option value="">Default (keep all P-loci)</option>
+                                <option value="1">Only paragraph-initial lines</option>
+                                <option value="2">All except paragraph-initial</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Characters -->
+                <div class="tab-panel" data-tab-panel="characters" role="tabpanel">
+                    <div class="option-grid">
+                        <div class="option-group">
+                            <label for="opt-u">Uncertain Readings <code>-u</code></label>
+                            <select id="opt-u" data-opt="u">
+                                <option value="">Default (keep as-is)</option>
+                                <option value="1">Pick first alternate reading</option>
+                                <option value="2">Replace alternates with ?</option>
+                                <option value="3">Uncertain words to ???</option>
+                                <option value="4">Remove words with uncertain readings</option>
+                                <option value="5">Remove lines with uncertain readings</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-l">Ligatures <code>-l</code></label>
+                            <select id="opt-l" data-opt="l">
+                                <option value="">Default (keep brackets)</option>
+                                <option value="1">Strip brackets, keep text</option>
+                                <option value="2">Capitalisation rule</option>
+                                <option value="3">Capitalisation + EVA digraphs</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-a">High ASCII <code>-a</code></label>
+                            <select id="opt-a" data-opt="a">
+                                <option value="">Default (unchanged)</option>
+                                <option value="1">High ASCII to @nnn;</option>
+                                <option value="2">@nnn; to high ASCII byte</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Spacing & Layout -->
+                <div class="tab-panel" data-tab-panel="spacing" role="tabpanel">
+                    <div class="option-grid">
+                        <div class="option-group">
+                            <label for="opt-s">Certain Spaces (dot) <code>-s</code></label>
+                            <select id="opt-s" data-opt="s">
+                                <option value="">Default (keep dot)</option>
+                                <option value="1">Convert to blanks</option>
+                                <option value="2">Remove spaces</option>
+                                <option value="3">Convert to newlines (one word/line)</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-h">Uncertain Spaces (comma) <code>-h</code></label>
+                            <select id="opt-h" data-opt="h">
+                                <option value="">Default (keep comma)</option>
+                                <option value="1">Treat as certain spaces</option>
+                                <option value="2">Remove uncertain spaces</option>
+                                <option value="3">Convert to ? (words to ???)</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-b">Whitespace <code>-b</code></label>
+                            <select id="opt-b" data-opt="b">
+                                <option value="">Default (keep)</option>
+                                <option value="1">Strip all whitespace</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-w">Line Wrapping <code>-w</code></label>
+                            <select id="opt-w" data-opt="w">
+                                <option value="">Default (keep as-is)</option>
+                                <option value="1">Unwrap continuation lines</option>
+                                <option value="2">Wrap at 40 chars</option>
+                                <option value="3">Wrap at 60 chars</option>
+                                <option value="4">Wrap at 80 chars</option>
+                                <option value="5">Wrap at 100 chars</option>
+                                <option value="6">Wrap at 120 chars</option>
+                                <option value="7">Wrap at 140 chars</option>
+                                <option value="8">Wrap at 160 chars</option>
+                                <option value="9">Wrap at 180 chars</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Page Selection -->
+                <div class="tab-panel" data-tab-panel="selection" role="tabpanel">
+                    <p class="hint" style="margin-bottom:0.75rem;">Filter pages by variable values. Use include to keep only matching pages, or exclude to remove them.</p>
+
+                    <div class="selection-presets">
+                        <div class="selection-row">
+                            <label>Illustration Type <code>$I</code></label>
+                            <div class="sel-controls">
+                                <select data-sel-mode="I">
+                                    <option value="">No filter</option>
+                                    <option value="+">Include only</option>
+                                    <option value="-">Exclude</option>
+                                </select>
+                                <select data-sel-value="I" disabled>
+                                    <option value="">--</option>
+                                    <option value="A">Astronomical</option>
+                                    <option value="B">Biological</option>
+                                    <option value="C">Cosmological</option>
+                                    <option value="H">Herbal</option>
+                                    <option value="P">Pharmaceutical</option>
+                                    <option value="S">Stars only</option>
+                                    <option value="T">Text-only</option>
+                                    <option value="Z">Zodiac</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="selection-row">
+                            <label>Currier Language <code>$L</code></label>
+                            <div class="sel-controls">
+                                <select data-sel-mode="L">
+                                    <option value="">No filter</option>
+                                    <option value="+">Include only</option>
+                                    <option value="-">Exclude</option>
+                                </select>
+                                <select data-sel-value="L" disabled>
+                                    <option value="">--</option>
+                                    <option value="A">Language A</option>
+                                    <option value="B">Language B</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="selection-row">
+                            <label>Writing Hand <code>$H</code></label>
+                            <div class="sel-controls">
+                                <select data-sel-mode="H">
+                                    <option value="">No filter</option>
+                                    <option value="+">Include only</option>
+                                    <option value="-">Exclude</option>
+                                </select>
+                                <select data-sel-value="H" disabled>
+                                    <option value="">--</option>
+                                    <option value="1">Hand 1</option>
+                                    <option value="2">Hand 2</option>
+                                    <option value="3">Hand 3</option>
+                                    <option value="4">Hand 4</option>
+                                    <option value="5">Hand 5</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="selection-row">
+                            <label>Currier Hand <code>$C</code></label>
+                            <div class="sel-controls">
+                                <select data-sel-mode="C">
+                                    <option value="">No filter</option>
+                                    <option value="+">Include only</option>
+                                    <option value="-">Exclude</option>
+                                </select>
+                                <select data-sel-value="C" disabled>
+                                    <option value="">--</option>
+                                    <option value="1">Hand 1</option>
+                                    <option value="2">Hand 2</option>
+                                    <option value="3">Hand 3</option>
+                                    <option value="4">Hand 4</option>
+                                    <option value="5">Hand 5</option>
+                                    <option value="X">Hand X</option>
+                                    <option value="Z">Hand Z</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="custom-selection">
+                        <h4>Custom Variable Filters</h4>
+                        <div id="custom-filters"></div>
+                        <button type="button" class="btn-sm" id="btn-add-filter">+ Add filter</button>
+                    </div>
+                </div>
+
+                <!-- Tab: Locus & Transcriber -->
+                <div class="tab-panel" data-tab-panel="locus" role="tabpanel">
+                    <div class="option-grid">
+                        <div class="option-group full-width">
+                            <label>Locus Type Filter <code>+@/-@</code></label>
+                            <p class="hint" style="margin-bottom:0.5rem;">Include or exclude text by locus type. Leave as "No filter" to include all.</p>
+                            <div class="locus-grid">
+                                <div class="locus-item">
+                                    <select data-locus="P">
+                                        <option value="">No filter</option>
+                                        <option value="+">Include only</option>
+                                        <option value="-">Exclude</option>
+                                    </select>
+                                    <span class="locus-label"><strong>P</strong> -- Paragraph text</span>
+                                </div>
+                                <div class="locus-item">
+                                    <select data-locus="L">
+                                        <option value="">No filter</option>
+                                        <option value="+">Include only</option>
+                                        <option value="-">Exclude</option>
+                                    </select>
+                                    <span class="locus-label"><strong>L</strong> -- Labels</span>
+                                </div>
+                                <div class="locus-item">
+                                    <select data-locus="C">
+                                        <option value="">No filter</option>
+                                        <option value="+">Include only</option>
+                                        <option value="-">Exclude</option>
+                                    </select>
+                                    <span class="locus-label"><strong>C</strong> -- Circular text</span>
+                                </div>
+                                <div class="locus-item">
+                                    <select data-locus="R">
+                                        <option value="">No filter</option>
+                                        <option value="+">Include only</option>
+                                        <option value="-">Exclude</option>
+                                    </select>
+                                    <span class="locus-label"><strong>R</strong> -- Radial text</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-grid" style="margin-top:1rem;">
+                        <div class="option-group">
+                            <label>Transcriber Selection</label>
+                            <p class="hint">For interlinear files with multiple transcribers</p>
+                            <div class="transcriber-controls">
+                                <select id="transcriber-mode">
+                                    <option value="">No filter</option>
+                                    <option value="-">Select (strip ID from output)</option>
+                                    <option value="+">Select (keep ID in output)</option>
+                                </select>
+                                <input type="text" id="transcriber-id" disabled maxlength="1" placeholder="ID" class="transcriber-id-input" />
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <label for="opt-m">Stderr Output <code>-m</code></label>
+                            <select id="opt-m" data-opt="m">
+                                <option value="">Default (normal output)</option>
+                                <option value="1">Suppress (keep warnings)</option>
+                                <option value="2">Suppress all stderr</option>
+                                <option value="3">Diagnostics only (no output file)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generated CLI Args -->
+            <div class="args-bar">
+                <div class="args-display">
+                    <label>Generated Command</label>
+                    <div class="args-line">
+                        <span class="args-prefix">ivtt</span>
+                        <code id="args-code">(no options)</code>
+                        <span class="args-suffix">input.ivtff output.txt</span>
+                    </div>
+                </div>
+                <details class="cli-override">
+                    <summary>Manual CLI Override</summary>
+                    <p class="hint">Type raw arguments directly. When populated, the interactive controls above are ignored.</p>
+                    <input id="manual-args" type="text" placeholder="e.g. -x7 -h2 +IH +LB" spellcheck="false" />
+                </details>
+            </div>
+        </section>
+
+        <!-- Run Bar -->
+        <section class="panel run-bar" id="run-bar">
+            <div class="run-actions">
+                <button type="button" class="btn-run" id="btn-run">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Run IVTT
+                </button>
+                <button type="button" class="btn-secondary" id="btn-download" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download
+                </button>
+                <button type="button" class="btn-secondary" id="btn-copy" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy
+                </button>
+            </div>
+            <span class="status-text" id="status-text">Ready</span>
+        </section>
+
+        <!-- Workspace: Input / Output -->
+        <section class="panel workspace" id="workspace">
+            <div class="workspace-panes">
+                <div class="pane">
+                    <div class="pane-header">
+                        <label>Input</label>
+                        <span class="pane-badge" id="input-badge">0 lines</span>
+                    </div>
+                    <textarea id="input-textarea" spellcheck="false" placeholder="Load a file above or paste IVTFF content here..."></textarea>
+                </div>
+                <div class="pane">
+                    <div class="pane-header">
+                        <label>Output</label>
+                        <span class="pane-badge" id="output-badge">0 lines</span>
+                    </div>
+                    <textarea id="output-textarea" spellcheck="false" readonly placeholder="Output will appear here after running IVTT..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- Runtime Log -->
+        <section class="panel log-panel collapsed disabled" id="log-panel">
+            <div class="panel-header" id="log-header">
+                <h2>Runtime Log</h2>
+                <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <pre class="log-output" id="log-output" hidden></pre>
         </section>
     </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Acknowledgements</h3>
+                <p><strong>IVTT &amp; IVTFF</strong> created by and copyright of Rene Zandbergen.</p>
+                <p>Original source: <a href="https://www.voynich.nu/software/ivtt/ivtt.c" target="_blank" rel="noreferrer">ivtt.c</a> &middot; Transliteration files from <a href="https://www.voynich.nu/transcr.html" target="_blank" rel="noreferrer">voynich.nu</a></p>
+                <p>Permission to compile IVTT to WebAssembly and create this tool was granted by Rene Zandbergen. Please contact Rene for any use or modification of the IVTT logic or WASM module.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Created By</h3>
+                <p><strong>Jeremie Bornais</strong></p>
+                <p><a href="https://github.com/jere-mie" target="_blank" rel="noreferrer">GitHub</a> &middot; <a href="mailto:jeremiedevelops@gmail.com">Email</a> &middot; <a href="https://www.linkedin.com/in/jeremie-bornais" target="_blank" rel="noreferrer">LinkedIn</a></p>
+            </div>
+        </div>
+    </footer>
 
     <script type="module" src="./static/app.mjs"></script>
 </body>
