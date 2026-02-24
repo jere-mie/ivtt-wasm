@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IVTT Web - Minimal Example</title>
+    <meta name="description" content="Minimal developer example: run IVTT (Voynich transliteration tool) via WebAssembly in the browser." />
+    <link rel="icon" href="static/favicon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1a1a1e; --paper: #f4f1ec; --warm: #ebe6dd; --rule: #d0c9bc;
+            --muted: #8a8279; --accent: #9e4a2f; --accent-h: #b85a3a;
+            --mono: 'IBM Plex Mono','Menlo',monospace;
+            --serif: 'Source Serif 4',Georgia,serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; }
+        body { font-family: var(--serif); font-size: 16px; line-height: 1.6; color: var(--ink); background: var(--paper); }
+        .wrap { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+
+        header { padding: 2.5rem 0 1.5rem; border-bottom: 2px solid var(--ink); }
+        header h1 { font-size: 2.2rem; font-weight: 600; letter-spacing: .02em; line-height: 1.15; }
+        header h1 em { font-weight: 400; color: var(--accent); }
+        header p { margin-top: .35rem; color: var(--muted); font-size: .95rem; font-style: italic; }
+
+        section { padding: 1.25rem 0; border-bottom: 1px solid #e3ddd3; }
+        section:last-of-type { border-bottom: none; }
+        label { display: block; font-weight: 600; font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
+
+        .row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
+        .row > div { flex: 1; min-width: 180px; }
+
+        select, input[type="text"] {
+            width: 100%; font-family: var(--mono); font-size: .88rem;
+            padding: .5rem .65rem; border: 1px solid var(--rule); border-radius: 4px;
+            background: #fff; color: var(--ink);
+        }
+        select:focus, input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .75rem; }
+        button {
+            font-family: var(--serif); font-size: .9rem; padding: .5rem 1.2rem;
+            border: 1px solid var(--rule); border-radius: 4px; cursor: pointer;
+            background: #fff; color: var(--ink);
+        }
+        button:hover { background: var(--warm); }
+        .btn-run { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+        .btn-run:hover { background: var(--accent-h); border-color: var(--accent-h); }
+        .btn-run:disabled { opacity: .5; cursor: not-allowed; }
+        #status { font-family: var(--mono); font-size: .8rem; color: var(--muted); margin-left: auto; white-space: nowrap; }
+        #status.ok { color: #4a7c48; }
+        #status.err { color: #b8392e; }
+
+        .workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .pane-label {
+            font-family: var(--mono); font-size: .75rem; letter-spacing: .06em;
+            text-transform: uppercase; color: var(--muted); margin-bottom: .3rem;
+            display: flex; justify-content: space-between;
+        }
+        textarea {
+            width: 100%; height: 340px; font-family: var(--mono); font-size: .82rem;
+            line-height: 1.55; padding: .75rem; border: 1px solid var(--rule);
+            border-radius: 4px; background: #fff; color: var(--ink); resize: vertical;
+        }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        textarea[readonly] { background: var(--warm); }
+
+        details summary {
+            font-weight: 600; font-size: .85rem; letter-spacing: .04em;
+            text-transform: uppercase; color: var(--muted); cursor: pointer; padding: .5rem 0;
+        }
+        pre.log {
+            font-family: var(--mono); font-size: .78rem; line-height: 1.5;
+            background: #2b2a30; color: #e0dbd3; padding: .75rem 1rem;
+            border-radius: 4px; overflow-x: auto; max-height: 220px;
+            white-space: pre-wrap; word-break: break-all;
+        }
+
+        footer { margin-top: 1.5rem; padding: 1.5rem 0; border-top: 2px solid var(--ink); font-size: .88rem; color: var(--muted); }
+        footer p { margin: .25rem 0; }
+        footer a { color: var(--accent); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+        footer .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        footer h3 { font-size: .95rem; font-weight: 600; color: var(--ink); margin-bottom: .35rem; }
+
+        @media (max-width: 640px) {
+            .workspace, footer .cols { grid-template-columns: 1fr; }
+            .row > div { min-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <header>
+        <h1>IVTT <em>Minimal</em></h1>
+        <p>A bare-bones developer example - WASM + Emscripten + your own UI</p>
+    </header>
+
+    <section>
+        <div class="row">
+            <div>
+                <label for="file-select">Corpus file</label>
+                <select id="file-select"></select>
+            </div>
+            <div style="flex:0 0 auto;align-self:end">
+                <input id="upload" type="file" accept=".txt,.ivtff,text/plain" hidden />
+                <button id="btn-upload" style="font-size:.82rem;padding:.45rem .9rem">Upload file&hellip;</button>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="row">
+            <div>
+                <label for="args">Command-line options</label>
+                <input id="args" type="text" value="-x7" spellcheck="false" placeholder="e.g. -x7 -h2 +IH" />
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn-run" id="btn-run">Run IVTT</button>
+            <button id="btn-download" disabled>Download</button>
+            <button id="btn-copy" disabled>Copy</button>
+            <span id="status">Ready</span>
+        </div>
+    </section>
+
+    <section>
+        <div class="workspace">
+            <div>
+                <div class="pane-label">Input <span id="in-lines">0 lines</span></div>
+                <textarea id="input" spellcheck="false" placeholder="Load a file above or paste IVTFF content&hellip;"></textarea>
+            </div>
+            <div>
+                <div class="pane-label">Output <span id="out-lines">0 lines</span></div>
+                <textarea id="output" readonly placeholder="Output appears here after running IVTT&hellip;"></textarea>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <details id="log-details">
+            <summary>Runtime Log</summary>
+            <pre class="log" id="log"></pre>
+        </details>
+    </section>
+
+    <footer>
+        <div class="cols">
+            <div>
+                <h3>Acknowledgements</h3>
+                <p><strong>IVTT &amp; IVTFF</strong> created by and copyright of Rene Zandbergen.</p>
+                <p>Original Source: <a href="https://www.voynich.nu/software/ivtt/ivtt.c" target="_blank" rel="noreferrer">ivtt.c</a> &middot; Transliterations from <a href="https://www.voynich.nu/transcr.html" target="_blank" rel="noreferrer">voynich.nu</a></p>
+                <p>Permission to compile IVTT to WebAssembly and create this tool was granted by Rene Zandbergen.</p>
+            </div>
+            <div>
+                <h3>Links</h3>
+                <p><a href="index.html">Full IVTT Web App</a> &middot; <a href="https://github.com/jere-mie/ivtt-wasm" target="_blank" rel="noreferrer">GitHub Repo</a></p>
+                <p><a href="https://www.voynich.nu/extra/sp_transcr.html#ivtt" target="_blank" rel="noreferrer">IVTT Overview</a> &middot; <a href="https://www.voynich.nu/software/ivtt/IVTT_manual.pdf" target="_blank" rel="noreferrer">IVTT Manual</a> &middot; <a href="https://www.voynich.nu/software/ivtt/IVTFF_format.pdf" target="_blank" rel="noreferrer">IVTFF Format</a></p>
+                <p>Created by <strong>Jeremie Bornais</strong> - <a href="https://github.com/jere-mie" target="_blank" rel="noreferrer">GitHub</a> &middot; <a href="mailto:jeremiedevelops@gmail.com">Email</a> &middot; <a href="https://www.linkedin.com/in/jeremie-bornais" target="_blank" rel="noreferrer">LinkedIn</a></p>
+            </div>
+        </div>
+    </footer>
+
+</div>
+
+<script type="module">
+import createIvttModule from './dist/ivtt.mjs';
+
+const $ = s => document.querySelector(s);
+const inputEl = $('#input'), outputEl = $('#output');
+let lastOutput = '';
+
+const countLines = t => t ? t.split('\n').length : 0;
+function setStatus(msg, type) {
+    const el = $('#status');
+    el.textContent = msg;
+    el.className = type === 'ok' ? 'ok' : type === 'err' ? 'err' : '';
+}
+function refreshBadges() {
+    $('#in-lines').textContent = countLines(inputEl.value) + ' lines';
+    $('#out-lines').textContent = countLines(outputEl.value) + ' lines';
+}
+
+// Load manifest and populate file picker
+const files = await fetch('./static/transliterations/manifest.json', { cache: 'no-store' }).then(r => r.json());
+const sel = $('#file-select');
+for (const f of files) sel.append(Object.assign(document.createElement('option'), { value: f, textContent: f }));
+
+async function loadFile(name) {
+    const r = await fetch('./static/transliterations/' + encodeURIComponent(name));
+    if (!r.ok) throw new Error('Failed to load ' + name);
+    return r.text();
+}
+
+function resetOutput() { outputEl.value = ''; lastOutput = ''; refreshBadges(); }
+
+// Load first file on startup
+if (files.length) { inputEl.value = await loadFile(files[0]); refreshBadges(); setStatus('Loaded: ' + files[0], 'ok'); }
+
+// Events
+sel.addEventListener('change', async () => {
+    try { inputEl.value = await loadFile(sel.value); resetOutput(); setStatus('Loaded: ' + sel.value, 'ok'); }
+    catch (e) { setStatus(e.message, 'err'); }
+});
+
+$('#btn-upload').addEventListener('click', () => $('#upload').click());
+$('#upload').addEventListener('change', async e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    inputEl.value = await file.text(); resetOutput(); setStatus('Loaded: ' + file.name, 'ok');
+});
+
+inputEl.addEventListener('input', refreshBadges);
+
+// Run IVTT
+$('#btn-run').addEventListener('click', async () => {
+    resetOutput();
+    $('#log').textContent = '';
+    $('#log-details').open = false;
+
+    const text = inputEl.value.trim();
+    if (!text) return setStatus('Input is empty.', 'err');
+
+    const first = text.split(/\r?\n/, 1)[0] || '';
+    if (!/^#=IVTFF\b/.test(first) || !/\b2\.0\b/.test(first))
+        return setStatus('Input does not look like IVTFF 2.0.', 'err');
+
+    const userArgs = $('#args').value.trim().split(/\s+/).filter(Boolean);
+    const stderr = [], stdout = [];
+
+    $('#btn-run').disabled = true;
+    setStatus('Running\u2026');
+
+    try {
+        // Fresh WASM instance each run (IVTT uses global state)
+        const Module = await createIvttModule({
+            noInitialRun: true, noExitRuntime: true,
+            print: l => stdout.push(String(l)),
+            printErr: l => stderr.push(String(l)),
+        });
+
+        try { Module.FS.mkdir('/work'); } catch (_) {}
+        Module.FS.writeFile('/work/in.ivtff', text, { encoding: 'utf8' });
+
+        let exit = 0;
+        try { const rc = Module.callMain([...userArgs, '/work/in.ivtff', '/work/out.txt']); if (typeof rc === 'number') exit = rc; }
+        catch (e) { if (e?.status != null) exit = e.status; else throw e; }
+
+        lastOutput = Module.FS.readFile('/work/out.txt', { encoding: 'utf8' });
+        outputEl.value = lastOutput;
+        refreshBadges();
+
+        const log = [stderr.join('\n'), stdout.join('\n')].filter(s => s.trim()).join('\n');
+        if (log) { $('#log').textContent = log; $('#log-details').open = true; }
+
+        setStatus('Done (exit ' + exit + ')', 'ok');
+    } catch (e) {
+        $('#log').textContent = String(e?.stack || e?.message || e);
+        $('#log-details').open = true;
+        setStatus('Failed \u2013 is dist/ivtt.mjs built?', 'err');
+    } finally {
+        $('#btn-run').disabled = false;
+        $('#btn-download').disabled = !lastOutput;
+        $('#btn-copy').disabled = !lastOutput;
+    }
+});
+
+// Download & Copy
+$('#btn-download').addEventListener('click', () => {
+    if (!lastOutput) return;
+    const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([lastOutput], { type: 'text/plain' })),
+        download: 'ivtt_output.txt',
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+});
+
+$('#btn-copy').addEventListener('click', async () => {
+    if (!lastOutput) return;
+    try { await navigator.clipboard.writeText(lastOutput); setStatus('Copied!', 'ok'); }
+    catch { setStatus('Copy failed.', 'err'); }
+});
+</script>
+</body>
+</html>

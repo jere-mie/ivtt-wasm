@@ -35,6 +35,17 @@ A fresh WASM module instance is created on every run because IVTT uses global mu
 | Styling | Custom CSS with dark "Scholar's Codex" theme |
 | Fonts | Cormorant Garamond, Nunito, Fira Code (Google Fonts) |
 
+## Minimal example
+
+A self-contained [minimal.html](minimal.html) is included alongside the full app. It demonstrates the bare essentials needed to integrate the IVTT WASM module into your own interface:
+
+- Load an IVTFF file (from bundled presets, upload, or direct text editing)
+- Pass command-line options (defaults to `-x7`)
+- Instantiate the Emscripten module, write input to the virtual filesystem, call `Module.callMain()`, and read the output back
+- Display input/output side-by-side with a runtime log
+
+All HTML, CSS, and JS live in a single file (~250 lines of script). Open it at `/minimal.html` when serving the project locally, or view it on the live site.
+
 ## Repository layout
 
 ```
